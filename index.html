@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Split & Meal Plan Calculator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen p-4">
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+</script>
+
+<div class="max-w-4xl mx-auto">
+  <h1 class="text-3xl font-bold text-center mb-1 text-orange-400">Macro Split & Meal Plan Calculator</h1>
+  <p class="text-center text-gray-400 mb-6 text-sm">TDEE計算・三大栄養素ターゲット・食品ログ管理</p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-4">
+    <!-- Input Form -->
+    <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
+      <h2 class="text-base font-semibold text-gray-200 mb-4">Body Metrics</h2>
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Height (cm)</label>
+            <input id="height" type="number" value="170" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Weight (kg)</label>
+            <input id="weight" type="number" value="70" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Age</label>
+            <input id="age" type="number" value="30" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Sex</label>
+            <select id="sex" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 mb-1 block">Activity Level</label>
+          <select id="activity" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
+            <option value="1.2">Sedentary (desk job, no exercise)</option>
+            <option value="1.375">Light (1-3x/week)</option>
+            <option value="1.55" selected>Moderate (3-5x/week)</option>
+            <option value="1.725">Active (6-7x/week)</option>
+            <option value="1.9">Very Active (2x/day, hard training)</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 mb-1 block">Goal</label>
+          <div class="flex gap-2">
+            <label class="flex-1 cursor-pointer"><input type="radio" name="goal" value="lose" class="sr-only peer"><div class="peer-checked:bg-blue-600 peer-checked:border-blue-400 bg-gray-800 border border-gray-600 rounded-lg p-2 text-center text-xs transition-colors hover:border-gray-400">🔥 Lose Fat</div></label>
+            <label class="flex-1 cursor-pointer"><input type="radio" name="goal" value="maintain" checked class="sr-only peer"><div class="peer-checked:bg-green-700 peer-checked:border-green-400 bg-gray-800 border border-gray-600 rounded-lg p-2 text-center text-xs transition-colors hover:border-gray-400">⚖️ Maintain</div></label>
+            <label class="flex-1 cursor-pointer"><input type="radio" name="goal" value="gain" class="sr-only peer"><div class="peer-checked:bg-orange-700 peer-checked:border-orange-400 bg-gray-800 border border-gray-600 rounded-lg p-2 text-center text-xs transition-colors hover:border-gray-400">💪 Gain Muscle</div></label>
+          </div>
+        </div>
+        <button onclick="calculate()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded-lg transition-colors">Calculate TDEE & Macros</button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
+      <h2 class="text-base font-semibold text-gray-200 mb-4">Daily Targets</h2>
+      <div id="results" class="text-gray-500 italic text-sm">Fill in your metrics and click Calculate</div>
+    </div>
+  </div>
+
+  <!-- Food Log -->
+  <div class="grid md:grid-cols-2 gap-4">
+    <!-- Food Database -->
+    <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
+      <h2 class="text-base font-semibold text-gray-200 mb-3">Food Database</h2>
+      <div class="flex gap-2 mb-3">
+        <input id="amountInput" type="number" value="100" min="1" max="1000"
+          class="w-24 bg-gray-800 border border-gray-600 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-orange-500">
+        <span class="text-gray-400 text-sm self-center">g</span>
+        <button onclick="addFood()" class="flex-1 bg-orange-700 hover:bg-orange-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">Add Selected</button>
+      </div>
+      <div class="space-y-1 max-h-64 overflow-y-auto pr-1" id="foodDB">
+      </div>
+    </div>
+
+    <!-- Daily Log -->
+    <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-base font-semibold text-gray-200">Today's Log</h2>
+        <button onclick="clearLog()" class="text-xs text-gray-500 hover:text-red-400 transition-colors">Clear</button>
+      </div>
+      <div id="logEntries" class="space-y-1 max-h-40 overflow-y-auto mb-3 text-sm text-gray-500 italic">No foods added yet</div>
+      <!-- Progress Bars -->
+      <div id="progressBars" class="space-y-2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FOODS = [
+  { name:'Chicken Breast', cal:165, protein:31, carbs:0, fat:3.6 },
+  { name:'White Rice (cooked)', cal:130, protein:2.7, carbs:28, fat:0.3 },
+  { name:'Egg', cal:155, protein:13, carbs:1.1, fat:11 },
+  { name:'Salmon', cal:208, protein:20, carbs:0, fat:13 },
+  { name:'Broccoli', cal:34, protein:2.8, carbs:7, fat:0.4 },
+  { name:'Oatmeal (dry)', cal:389, protein:17, carbs:66, fat:7 },
+  { name:'Banana', cal:89, protein:1.1, carbs:23, fat:0.3 },
+  { name:'Greek Yogurt', cal:97, protein:9, carbs:6, fat:5 },
+  { name:'Almonds', cal:579, protein:21, carbs:22, fat:50 },
+  { name:'Milk (whole)', cal:61, protein:3.2, carbs:4.8, fat:3.3 },
+  { name:'Sweet Potato', cal:86, protein:1.6, carbs:20, fat:0.1 },
+  { name:'Tuna (canned)', cal:116, protein:26, carbs:0, fat:1 },
+  { name:'Avocado', cal:160, protein:2, carbs:9, fat:15 },
+  { name:'Whole Wheat Bread', cal:247, protein:13, carbs:41, fat:4.2 },
+  { name:'Cottage Cheese', cal:98, protein:11, carbs:3.4, fat:4.3 },
+  { name:'Beef (lean)', cal:250, protein:26, carbs:0, fat:15 },
+  { name:'Lentils (cooked)', cal:116, protein:9, carbs:20, fat:0.4 },
+  { name:'Spinach', cal:23, protein:2.9, carbs:3.6, fat:0.4 },
+  { name:'Olive Oil', cal:884, protein:0, carbs:0, fat:100 },
+  { name:'Pasta (cooked)', cal:158, protein:5.8, carbs:31, fat:0.9 },
+];
+
+let selectedFoodIdx = 0;
+let dailyLog = [];
+let targets = null;
+
+function renderFoodDB() {
+  const db = document.getElementById('foodDB');
+  db.innerHTML = FOODS.map((f,i) => `
+    <div onclick="selectFood(${i})" id="food_${i}"
+      class="flex justify-between items-center px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${i===selectedFoodIdx?'bg-orange-900/50 border border-orange-700':'hover:bg-gray-800 border border-transparent'}">
+      <span class="text-sm text-gray-200">${escapeHtml(f.name)}</span>
+      <div class="text-xs text-gray-500 text-right">
+        <span class="text-orange-400">${f.cal}kcal</span>
+        <span class="ml-1">P:${f.protein}g</span>
+      </div>
+    </div>`).join('');
+}
+
+function selectFood(i) {
+  selectedFoodIdx = i;
+  renderFoodDB();
+}
+
+function addFood() {
+  const amt = parseFloat(document.getElementById('amountInput').value) || 100;
+  const f = FOODS[selectedFoodIdx];
+  const ratio = amt/100;
+  dailyLog.push({
+    name: f.name,
+    amount: amt,
+    cal: Math.round(f.cal*ratio),
+    protein: Math.round(f.protein*ratio*10)/10,
+    carbs: Math.round(f.carbs*ratio*10)/10,
+    fat: Math.round(f.fat*ratio*10)/10
+  });
+  renderLog();
+}
+
+function removeLog(i) {
+  dailyLog.splice(i,1);
+  renderLog();
+}
+
+function clearLog() {
+  dailyLog = [];
+  renderLog();
+}
+
+function renderLog() {
+  const el = document.getElementById('logEntries');
+  if (dailyLog.length === 0) {
+    el.innerHTML = '<span class="text-gray-500 italic">No foods added yet</span>';
+  } else {
+    el.innerHTML = dailyLog.map((e,i) => `
+      <div class="flex justify-between items-center py-1 border-b border-gray-800">
+        <div>
+          <span class="text-gray-200 text-xs">${escapeHtml(e.name)}</span>
+          <span class="text-gray-500 text-xs ml-1">${escapeHtml(String(e.amount))}g</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-orange-400 text-xs font-mono">${escapeHtml(String(e.cal))}kcal</span>
+          <button onclick="removeLog(${i})" class="text-gray-600 hover:text-red-400 text-xs">×</button>
+        </div>
+      </div>`).join('');
+  }
+  renderProgress();
+}
+
+function renderProgress() {
+  const pb = document.getElementById('progressBars');
+  const totals = dailyLog.reduce((acc,e) => ({
+    cal: acc.cal+e.cal, protein: acc.protein+e.protein,
+    carbs: acc.carbs+e.carbs, fat: acc.fat+e.fat
+  }), {cal:0,protein:0,carbs:0,fat:0});
+
+  const t = targets || {cal:2000,protein:150,carbs:200,fat:65};
+  const bars = [
+    {label:'Calories', val:totals.cal, max:t.cal, unit:'kcal', color:'bg-orange-500'},
+    {label:'Protein', val:totals.protein, max:t.protein, unit:'g', color:'bg-blue-500'},
+    {label:'Carbs', val:totals.carbs, max:t.carbs, unit:'g', color:'bg-yellow-500'},
+    {label:'Fat', val:totals.fat, max:t.fat, unit:'g', color:'bg-pink-500'},
+  ];
+
+  pb.innerHTML = bars.map(b => {
+    const pct = Math.min(Math.round(b.val/b.max*100),100);
+    const over = b.val > b.max;
+    return `<div>
+      <div class="flex justify-between text-xs mb-1">
+        <span class="text-gray-300">${escapeHtml(b.label)}</span>
+        <span class="${over?'text-red-400':'text-gray-400'}">${escapeHtml(String(b.val))}${escapeHtml(b.unit)} / ${escapeHtml(String(b.max))}${escapeHtml(b.unit)}</span>
+      </div>
+      <div class="w-full bg-gray-800 rounded-full h-2.5">
+        <div class="${b.color} h-2.5 rounded-full transition-all" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function calculate() {
+  const h = parseFloat(document.getElementById('height').value);
+  const w = parseFloat(document.getElementById('weight').value);
+  const a = parseInt(document.getElementById('age').value);
+  const sex = document.getElementById('sex').value;
+  const act = parseFloat(document.getElementById('activity').value);
+  const goal = document.querySelector('input[name="goal"]:checked')?.value || 'maintain';
+
+  if (!h||!w||!a) return;
+
+  // Mifflin-St Jeor
+  let bmr;
+  if (sex==='male') bmr = 10*w + 6.25*h - 5*a + 5;
+  else bmr = 10*w + 6.25*h - 5*a - 161;
+
+  const tdee = Math.round(bmr * act);
+  let cal = tdee;
+  if (goal==='lose') cal = Math.round(tdee * 0.8);
+  if (goal==='gain') cal = Math.round(tdee * 1.1);
+
+  let protein, carbs, fat;
+  if (goal==='lose') { protein=Math.round(w*2.2); fat=Math.round(cal*0.25/9); carbs=Math.round((cal-protein*4-fat*9)/4); }
+  else if (goal==='gain') { protein=Math.round(w*2); fat=Math.round(cal*0.25/9); carbs=Math.round((cal-protein*4-fat*9)/4); }
+  else { protein=Math.round(w*1.8); fat=Math.round(cal*0.30/9); carbs=Math.round((cal-protein*4-fat*9)/4); }
+
+  targets = { cal, protein, carbs, fat };
+
+  const goalColors = {lose:'text-blue-400',maintain:'text-green-400',gain:'text-orange-400'};
+  const goalLabels = {lose:'Fat Loss (-20%)',maintain:'Maintenance',gain:'Muscle Gain (+10%)'};
+
+  document.getElementById('results').innerHTML = `
+    <div class="mb-3 text-center">
+      <div class="text-xs text-gray-500">TDEE</div>
+      <div class="text-3xl font-bold text-white">${escapeHtml(String(tdee))}<span class="text-sm text-gray-400 ml-1">kcal/day</span></div>
+      <div class="text-xs ${goalColors[goal]}">${escapeHtml(goalLabels[goal])} → ${escapeHtml(String(cal))} kcal</div>
+    </div>
+    <div class="grid grid-cols-3 gap-2 mb-3">
+      <div class="bg-blue-900/40 rounded-lg p-2 text-center border border-blue-800">
+        <div class="text-xl font-bold text-blue-400">${escapeHtml(String(protein))}g</div>
+        <div class="text-xs text-gray-400">Protein</div>
+        <div class="text-xs text-gray-500">${escapeHtml(String(protein*4))}kcal</div>
+      </div>
+      <div class="bg-yellow-900/40 rounded-lg p-2 text-center border border-yellow-800">
+        <div class="text-xl font-bold text-yellow-400">${escapeHtml(String(carbs))}g</div>
+        <div class="text-xs text-gray-400">Carbs</div>
+        <div class="text-xs text-gray-500">${escapeHtml(String(carbs*4))}kcal</div>
+      </div>
+      <div class="bg-pink-900/40 rounded-lg p-2 text-center border border-pink-800">
+        <div class="text-xl font-bold text-pink-400">${escapeHtml(String(fat))}g</div>
+        <div class="text-xs text-gray-400">Fat</div>
+        <div class="text-xs text-gray-500">${escapeHtml(String(fat*9))}kcal</div>
+      </div>
+    </div>
+    <div class="text-xs text-gray-500 bg-gray-800 rounded-lg p-2">
+      BMR: ${escapeHtml(String(Math.round(bmr)))} kcal/day (Mifflin-St Jeor) × ${escapeHtml(String(act))} activity = ${escapeHtml(String(tdee))} TDEE
+    </div>`;
+  renderProgress();
+}
+
+renderFoodDB();
+calculate();
+</script>
+</body>
+</html>
